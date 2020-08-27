@@ -31,7 +31,7 @@ import (
 	"time"
 )
 
-// All errors
+// All error constants
 var (
 	ErrJSONUnmarshal           = errors.New("json unmarshal")
 	ErrStatusOffline           = errors.New("You can't set your Status to offline")
@@ -42,8 +42,7 @@ var (
 	ErrUnauthorized            = errors.New("HTTP request was unauthorized. This could be because the provided token was not a bot token. Please add \"Bot \" to the start of your token. https://discord.com/developers/docs/reference#authentication-example-bot-token-authorization-header")
 )
 
-// Request is the same as RequestWithBucketID but the bucket ID is the same as
-// urlStr.
+// Request is the same as RequestWithBucketID but the bucket id is the same as the urlStr
 func (s *Session) Request(method, urlStr string, data interface{}) (response []byte, err error) {
 	return s.RequestWithContext(context.TODO(), method, urlStr, data)
 }
@@ -54,8 +53,7 @@ func (s *Session) RequestWithContext(ctx context.Context, method, urlStr string,
 	return s.RequestWithContextBucketID(ctx, method, urlStr, data, strings.SplitN(urlStr, "?", 2)[0])
 }
 
-// RequestWithBucketID makes a (GET/POST/...) request to the Discord REST API
-// with JSON data.
+// RequestWithBucketID makes a (GET/POST/...) Requests to Discord REST API with JSON data.
 func (s *Session) RequestWithBucketID(method, urlStr string, data interface{}, bucketID string) (response []byte, err error) {
 	return s.RequestWithContextBucketID(context.TODO(), method, urlStr, data, bucketID)
 }
@@ -86,7 +84,7 @@ func (s *Session) request(ctx context.Context, method, urlStr, contentType strin
 	return s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, s.Ratelimiter.LockBucket(bucketID), sequence)
 }
 
-// RequestWithLockedBucket makes a request using a bucket that's already been locked.
+// RequestWithLockedBucket makes a request using a bucket that's already been locked
 func (s *Session) RequestWithLockedBucket(method, urlStr, contentType string, b []byte, bucket *Bucket, sequence int) (response []byte, err error) {
 	return s.RequestWithContextLockedBucket(context.TODO(), method, urlStr, contentType, b, bucket, sequence)
 }
@@ -893,10 +891,6 @@ func (s *Session) GuildMemberEdit(guildID, userID string, roles []string) (err e
 	}{roles}
 
 	_, err = s.RequestWithBucketID("PATCH", EndpointGuildMember(guildID, userID), data, EndpointGuildMember(guildID, ""))
-	if err != nil {
-		return
-	}
-
 	return
 }
 
@@ -907,16 +901,11 @@ func (s *Session) GuildMemberEdit(guildID, userID string, roles []string) (err e
 // NOTE : I am not entirely set on the name of this function and it may change
 // prior to the final 1.0.0 release of Discordgo
 func (s *Session) GuildMemberMove(guildID string, userID string, channelID *string) (err error) {
-
 	data := struct {
 		ChannelID *string `json:"channel_id"`
 	}{channelID}
 
 	_, err = s.RequestWithBucketID("PATCH", EndpointGuildMember(guildID, userID), data, EndpointGuildMember(guildID, ""))
-	if err != nil {
-		return
-	}
-
 	return
 }
 
@@ -924,6 +913,7 @@ func (s *Session) GuildMemberMove(guildID string, userID string, channelID *stri
 // guildID   : The ID of a guild
 // userID    : The ID of a user
 // userID    : The ID of a user or "@me" which is a shortcut of the current user ID
+// nickname  : The nickname of the member, "" will reset their nickname
 func (s *Session) GuildMemberNickname(guildID, userID, nickname string) (err error) {
 
 	data := struct {
@@ -933,6 +923,32 @@ func (s *Session) GuildMemberNickname(guildID, userID, nickname string) (err err
 	if userID == "@me" {
 		userID += "/nick"
 	}
+
+	_, err = s.RequestWithBucketID("PATCH", EndpointGuildMember(guildID, userID), data, EndpointGuildMember(guildID, ""))
+	return
+}
+
+// GuildMemberMute server mutes a guild member
+//  guildID   : The ID of a Guild.
+//  userID    : The ID of a User.
+//  mute    : boolean value for if the user should be muted
+func (s *Session) GuildMemberMute(guildID string, userID string, mute bool) (err error) {
+	data := struct {
+		Mute bool `json:"mute"`
+	}{mute}
+
+	_, err = s.RequestWithBucketID("PATCH", EndpointGuildMember(guildID, userID), data, EndpointGuildMember(guildID, ""))
+	return
+}
+
+// GuildMemberDeafen server deafens a guild member
+//  guildID   : The ID of a Guild.
+//  userID    : The ID of a User.
+//  deaf    : boolean value for if the user should be deafened
+func (s *Session) GuildMemberDeafen(guildID string, userID string, deaf bool) (err error) {
+	data := struct {
+		Deaf bool `json:"deaf"`
+	}{deaf}
 
 	_, err = s.RequestWithBucketID("PATCH", EndpointGuildMember(guildID, userID), data, EndpointGuildMember(guildID, ""))
 	return
