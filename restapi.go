@@ -198,7 +198,7 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 func unmarshal(data []byte, v interface{}) error {
 	err := json.Unmarshal(data, v)
 	if err != nil {
-		return ErrJSONUnmarshal
+		return fmt.Errorf("%s: %w", ErrJSONUnmarshal, err)
 	}
 
 	return nil
@@ -492,6 +492,17 @@ func (s *Session) UserGuildSettingsEdit(guildID string, settings *UserGuildSetti
 // NOTE: This function is now deprecated and will be removed in the future.
 // Please see the same function inside state.go
 func (s *Session) UserChannelPermissions(userID, channelID string) (apermissions int, err error) {
+	return s.UserChannelPermissionsWithContext(context.TODO(), userID, channelID)
+}
+
+// UserChannelPermissionsWithContext returns the permission of a user in a
+// channel.
+// userID    : The ID of the user to calculate permissions for.
+// channelID : The ID of the channel to calculate permission for.
+//
+// NOTE: This function is now deprecated and will be removed in the future.
+// Please see the same function inside state.go
+func (s *Session) UserChannelPermissionsWithContext(ctx context.Context, userID, channelID string) (apermissions int, err error) {
 	// Try to just get permissions from state.
 	apermissions, err = s.State.UserChannelPermissions(userID, channelID)
 	if err == nil {
@@ -501,7 +512,7 @@ func (s *Session) UserChannelPermissions(userID, channelID string) (apermissions
 	// Otherwise try get as much data from state as possible, falling back to the network.
 	channel, err := s.State.Channel(channelID)
 	if err != nil || channel == nil {
-		channel, err = s.Channel(channelID)
+		channel, err = s.ChannelWithContext(ctx, channelID)
 		if err != nil {
 			return
 		}
@@ -509,7 +520,7 @@ func (s *Session) UserChannelPermissions(userID, channelID string) (apermissions
 
 	guild, err := s.State.Guild(channel.GuildID)
 	if err != nil || guild == nil {
-		guild, err = s.Guild(channel.GuildID)
+		guild, err = s.GuildWithContext(ctx, channel.GuildID)
 		if err != nil {
 			return
 		}
@@ -522,7 +533,7 @@ func (s *Session) UserChannelPermissions(userID, channelID string) (apermissions
 
 	member, err := s.State.Member(guild.ID, userID)
 	if err != nil || member == nil {
-		member, err = s.GuildMember(guild.ID, userID)
+		member, err = s.GuildMemberWithContext(ctx, guild.ID, userID)
 		if err != nil {
 			return
 		}
@@ -1161,7 +1172,27 @@ func (s *Session) GuildRoleReorder(guildID string, roles []*Role) (st []*Role, e
 // roleID    : The ID of a Role.
 func (s *Session) GuildRoleDelete(guildID, roleID string) (err error) {
 
-	_, err = s.RequestWithBucketID("DELETE", EndpointGuildRole(guildID, roleID), nil, EndpointGuildRole(guildID, ""))
+	_, err = s.RequestWithBucketID(
+		http.MethodDelete,
+		EndpointGuildRole(guildID, roleID),
+		nil,
+		EndpointGuildRole(guildID, ""),
+	)
+
+	return
+}
+
+// GuildRoleDeleteWithContext deletes an existing role.
+// guildID   : The ID of a Guild.
+// roleID    : The ID of a Role.
+func (s *Session) GuildRoleDeleteWithContext(ctx context.Context, guildID, roleID string) (err error) {
+	_, err = s.RequestWithContextBucketID(
+		ctx,
+		http.MethodDelete,
+		EndpointGuildRole(guildID, roleID),
+		nil,
+		EndpointGuildRole(guildID, ""),
+	)
 
 	return
 }
