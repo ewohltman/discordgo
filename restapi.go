@@ -161,27 +161,35 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 	case http.StatusBadGateway:
 		// Retry sending request if possible
 		if sequence < s.MaxRestRetries {
-
 			s.log(LogInformational, "%s Failed (%s), Retrying...", urlStr, resp.Status)
 			response, err = s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, s.Ratelimiter.LockBucketObject(bucket), sequence+1)
 		} else {
 			err = fmt.Errorf("exceeded max retries HTTP %s, %s", resp.Status, response)
 		}
-	case 429: // TOO MANY REQUESTS - Rate limiting
-		rl := TooManyRequests{}
-		err = json.Unmarshal(response, &rl)
-		if err != nil {
-			s.log(LogError, "rate limit unmarshal error, %s", err)
-			return
+	case http.StatusTooManyRequests: // Rate limiting
+		// Retry sending request if possible
+		if sequence < s.MaxRestRetries {
+			s.log(LogInformational, "%s Failed (%s), Retrying...", urlStr, resp.Status)
+
+			rl := TooManyRequests{}
+
+			err = json.Unmarshal(response, &rl)
+			if err != nil {
+				s.log(LogError, "rate limit unmarshal error: %s", err)
+				return
+			}
+
+			s.log(LogInformational, "Rate Limiting %s, retry in %d ms", urlStr, rl.RetryAfter)
+			s.handleEvent(rateLimitEventType, RateLimit{TooManyRequests: &rl, URL: urlStr})
+
+			time.Sleep(rl.RetryAfter * time.Millisecond)
+			// we can make the above smarter
+			// this method can cause longer delays than required
+
+			response, err = s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, s.Ratelimiter.LockBucketObject(bucket), sequence+1)
+		} else {
+			err = fmt.Errorf("exceeded max retries HTTP %s, %s", resp.Status, response)
 		}
-		s.log(LogInformational, "Rate Limiting %s, retry in %d", urlStr, rl.RetryAfter)
-		s.handleEvent(rateLimitEventType, RateLimit{TooManyRequests: &rl, URL: urlStr})
-
-		time.Sleep(rl.RetryAfter * time.Millisecond)
-		// we can make the above smarter
-		// this method can cause longer delays than required
-
-		response, err = s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, s.Ratelimiter.LockBucketObject(bucket), sequence)
 	case http.StatusUnauthorized:
 		if strings.Index(s.Token, "Bot ") != 0 {
 			s.log(LogInformational, ErrUnauthorized.Error())
