@@ -161,7 +161,7 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 	case http.StatusBadGateway:
 		// Retry sending request if possible
 		if sequence < s.MaxRestRetries {
-			s.log(LogInformational, "%s Failed (%s), Retrying...", urlStr, resp.Status)
+			s.log(LogWarning, "%s Failed (%s), Retrying...", urlStr, resp.Status)
 			response, err = s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, s.Ratelimiter.LockBucketObject(bucket), sequence+1)
 		} else {
 			err = fmt.Errorf("exceeded max retries HTTP %s, %s", resp.Status, response)
@@ -169,8 +169,6 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 	case http.StatusTooManyRequests: // Rate limiting
 		// Retry sending request if possible
 		if sequence < s.MaxRestRetries {
-			s.log(LogInformational, "%s Failed (%s), Retrying...", urlStr, resp.Status)
-
 			rl := TooManyRequests{}
 
 			err = json.Unmarshal(response, &rl)
@@ -179,7 +177,7 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 				return
 			}
 
-			s.log(LogInformational, "Rate Limiting %s, retry in %d ms", urlStr, rl.RetryAfter)
+			s.log(LogWarning, "Rate Limiting %s, retry in %d ms", urlStr, rl.RetryAfter)
 			s.handleEvent(rateLimitEventType, RateLimit{TooManyRequests: &rl, URL: urlStr})
 
 			time.Sleep(rl.RetryAfter * time.Millisecond)
@@ -192,7 +190,7 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 		}
 	case http.StatusUnauthorized:
 		if strings.Index(s.Token, "Bot ") != 0 {
-			s.log(LogInformational, ErrUnauthorized.Error())
+			s.log(LogError, ErrUnauthorized.Error())
 			err = ErrUnauthorized
 		}
 		fallthrough

@@ -117,7 +117,7 @@ func (v *VoiceConnection) Speaking(b bool) (err error) {
 // !!! NOTE !!! This function may be removed in favour of just using ChannelVoiceJoin
 func (v *VoiceConnection) ChangeChannel(channelID string, mute, deaf bool) (err error) {
 
-	v.log(LogInformational, "called")
+	v.log(LogDebug, "called")
 
 	data := voiceChannelJoinOp{4, voiceChannelJoinData{&v.GuildID, &channelID, mute, deaf}}
 	v.wsMutex.Lock()
@@ -162,7 +162,7 @@ func (v *VoiceConnection) Disconnect() (err error) {
 // Close closes the voice ws and udp connections
 func (v *VoiceConnection) Close() {
 
-	v.log(LogInformational, "called")
+	v.log(LogDebug, "called")
 
 	v.Lock()
 	defer v.Unlock()
@@ -250,7 +250,7 @@ type voiceOP2 struct {
 // become ready, if it does not become ready it returns an err
 func (v *VoiceConnection) waitUntilConnected() error {
 
-	v.log(LogInformational, "called")
+	v.log(LogDebug, "called")
 
 	i := 0
 	for {
@@ -275,7 +275,7 @@ func (v *VoiceConnection) waitUntilConnected() error {
 // are captured.
 func (v *VoiceConnection) open() (err error) {
 
-	v.log(LogInformational, "called")
+	v.log(LogDebug, "called")
 
 	v.Lock()
 	defer v.Unlock()
@@ -341,7 +341,7 @@ func (v *VoiceConnection) open() (err error) {
 // to the voice event handler.  This is automatically called by the Open func
 func (v *VoiceConnection) wsListen(wsConn *websocket.Conn, close <-chan struct{}) {
 
-	v.log(LogInformational, "called")
+	v.log(LogDebug, "called")
 
 	for {
 		_, message, err := v.wsConn.ReadMessage()
@@ -851,7 +851,7 @@ func (v *VoiceConnection) opusReceiver(udpConn *net.UDPConn, close <-chan struct
 // aka: this is ugly shit code, please don't judge too harshly.
 func (v *VoiceConnection) reconnect() {
 
-	v.log(LogInformational, "called")
+	v.log(LogDebug, "called")
 
 	v.Lock()
 	if v.reconnecting {
