@@ -583,7 +583,7 @@ func (s *Session) onEvent(messageType int, message []byte) (*Event, error) {
 		// Either way, READY events must fire, even with errors.
 		s.handleEvent(e.Type, e.Struct)
 	} else {
-		s.log(LogWarning, "unknown event: Op: %d, Seq: %d, Type: %s, Data: %s", e.Operation, e.Sequence, e.Type, string(e.RawData))
+		s.log(LogDebug, "unknown event: Op: %d, Seq: %d, Type: %s, Data: %s", e.Operation, e.Sequence, e.Type, string(e.RawData))
 	}
 
 	// For legacy reasons, we send the raw event also, this could be useful for handling unknown events.
