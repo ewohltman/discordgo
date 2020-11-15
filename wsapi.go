@@ -178,7 +178,7 @@ func (s *Session) Open() error {
 	}
 	if e.Type != `READY` && e.Type != `RESUMED` && e.Type != `PRESENCE_UPDATE` {
 		// This is not fatal, but it does not follow their API documentation.
-		s.log(LogWarning, "Expected READY/RESUMED, instead got:\n%#v\n", e)
+		s.log(LogWarning, "Expected READY/RESUMED/PRESENCE_UPDATE, instead got:\n%#v\n", e)
 	}
 	s.log(LogDebug, "First Packet:\n%#v\n", e)
 
