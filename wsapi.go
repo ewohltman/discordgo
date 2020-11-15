@@ -74,7 +74,7 @@ func (s *Session) Open() error {
 	}
 
 	// Connect to the Gateway
-	s.log(LogInformational, "connecting to gateway %s", s.gateway)
+	s.log(LogDebug, "connecting to gateway %s", s.gateway)
 	header := http.Header{}
 	header.Add("accept-encoding", "zlib")
 	s.wsConn, _, err = websocket.DefaultDialer.Dial(s.gateway, header)
@@ -142,7 +142,7 @@ func (s *Session) Open() error {
 		p.Data.SessionID = s.sessionID
 		p.Data.Sequence = sequence
 
-		s.log(LogInformational, "sending resume packet to gateway")
+		s.log(LogDebug, "sending resume packet to gateway")
 		s.wsMutex.Lock()
 		err = s.wsConn.WriteJSON(p)
 		s.wsMutex.Unlock()
@@ -182,13 +182,13 @@ func (s *Session) Open() error {
 	}
 	s.log(LogDebug, "First Packet:\n%#v\n", e)
 
-	s.log(LogInformational, "We are now connected to Discord, emitting connect event")
+	s.log(LogDebug, "We are now connected to Discord, emitting connect event")
 	s.handleEvent(connectEventType, &Connect{})
 
 	// A VoiceConnections map is a hard requirement for Voice.
 	// XXX: can this be moved to when opening a voice connection?
 	if s.VoiceConnections == nil {
-		s.log(LogInformational, "creating new VoiceConnections map")
+		s.log(LogDebug, "creating new VoiceConnections map")
 		s.VoiceConnections = make(map[string]*VoiceConnection)
 	}
 
@@ -234,7 +234,7 @@ func (s *Session) listen(wsConn *websocket.Conn, listening <-chan interface{}) {
 					s.log(LogWarning, "error closing session connection, %s", err)
 				}
 
-				s.log(LogInformational, "calling reconnect() now")
+				s.log(LogDebug, "calling reconnect() now")
 				s.reconnect()
 			}
 
@@ -505,7 +505,7 @@ func (s *Session) onEvent(messageType int, message []byte) (*Event, error) {
 	// Ping request.
 	// Must respond with a heartbeat packet within 5 seconds
 	if e.Operation == 1 {
-		s.log(LogInformational, "sending heartbeat in response to Op1")
+		s.log(LogDebug, "sending heartbeat in response to Op1")
 		s.wsMutex.Lock()
 		err = s.wsConn.WriteJSON(heartbeatOp{1, atomic.LoadInt64(s.sequence)})
 		s.wsMutex.Unlock()
@@ -520,7 +520,7 @@ func (s *Session) onEvent(messageType int, message []byte) (*Event, error) {
 	// Reconnect
 	// Must immediately disconnect from gateway and reconnect to new gateway.
 	if e.Operation == 7 {
-		s.log(LogInformational, "Closing and reconnecting in response to Op7")
+		s.log(LogDebug, "Closing and reconnecting in response to Op7")
 		s.CloseWithCode(websocket.CloseServiceRestart)
 		s.reconnect()
 		return e, nil
@@ -530,7 +530,7 @@ func (s *Session) onEvent(messageType int, message []byte) (*Event, error) {
 	// Must respond with a Identify packet.
 	if e.Operation == 9 {
 
-		s.log(LogInformational, "sending identify packet to gateway in response to Op9")
+		s.log(LogDebug, "sending identify packet to gateway in response to Op9")
 
 		err = s.identify()
 		if err != nil {
@@ -799,11 +799,11 @@ func (s *Session) reconnect() {
 		wait := time.Duration(1)
 
 		for {
-			s.log(LogInformational, "trying to reconnect to gateway")
+			s.log(LogDebug, "trying to reconnect to gateway")
 
 			err = s.Open()
 			if err == nil {
-				s.log(LogInformational, "successfully reconnected to gateway")
+				s.log(LogDebug, "successfully reconnected to gateway")
 
 				// I'm not sure if this is actually needed.
 				// if the gw reconnect works properly, voice should stay alive
@@ -814,7 +814,7 @@ func (s *Session) reconnect() {
 				defer s.RUnlock()
 				for _, v := range s.VoiceConnections {
 
-					s.log(LogInformational, "reconnecting voice connection to guild %s", v.GuildID)
+					s.log(LogDebug, "reconnecting voice connection to guild %s", v.GuildID)
 					go v.reconnect()
 
 					// This is here just to prevent violently spamming the
@@ -828,7 +828,7 @@ func (s *Session) reconnect() {
 			// Certain race conditions can call reconnect() twice. If this happens, we
 			// just break out of the reconnect loop
 			if err == ErrWSAlreadyOpen {
-				s.log(LogInformational, "Websocket already exists, no need to reconnect")
+				s.log(LogDebug, "Websocket already exists, no need to reconnect")
 				return
 			}
 
@@ -860,7 +860,7 @@ func (s *Session) CloseWithCode(closeCode int) (err error) {
 	s.DataReady = false
 
 	if s.listening != nil {
-		s.log(LogInformational, "closing listening channel")
+		s.log(LogDebug, "closing listening channel")
 		close(s.listening)
 		s.listening = nil
 	}
@@ -870,23 +870,23 @@ func (s *Session) CloseWithCode(closeCode int) (err error) {
 
 	if s.wsConn != nil {
 
-		s.log(LogInformational, "sending close frame")
+		s.log(LogDebug, "sending close frame")
 		// To cleanly close a connection, a client should send a close
 		// frame and wait for the server to close the connection.
 		s.wsMutex.Lock()
 		err := s.wsConn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(closeCode, ""))
 		s.wsMutex.Unlock()
 		if err != nil {
-			s.log(LogInformational, "error closing websocket, %s", err)
+			s.log(LogDebug, "error closing websocket, %s", err)
 		}
 
 		// TODO: Wait for Discord to actually close the connection.
 		time.Sleep(1 * time.Second)
 
-		s.log(LogInformational, "closing gateway websocket")
+		s.log(LogDebug, "closing gateway websocket")
 		err = s.wsConn.Close()
 		if err != nil {
-			s.log(LogInformational, "error closing websocket, %s", err)
+			s.log(LogDebug, "error closing websocket, %s", err)
 		}
 
 		s.wsConn = nil
@@ -894,7 +894,7 @@ func (s *Session) CloseWithCode(closeCode int) (err error) {
 
 	s.Unlock()
 
-	s.log(LogInformational, "emit disconnect event")
+	s.log(LogDebug, "emit disconnect event")
 	s.handleEvent(disconnectEventType, &Disconnect{})
 
 	return

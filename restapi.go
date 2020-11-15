@@ -155,39 +155,50 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 	}
 
 	switch resp.StatusCode {
-	case http.StatusOK:
-	case http.StatusCreated:
-	case http.StatusNoContent:
+	case http.StatusOK, http.StatusCreated, http.StatusNoContent:
+		return
 	case http.StatusBadGateway:
 		// Retry sending request if possible
-		if sequence < s.MaxRestRetries {
-			s.log(LogWarning, "%s Failed (%s), Retrying...", urlStr, resp.Status)
-			response, err = s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, s.Ratelimiter.LockBucketObject(bucket), sequence+1)
-		} else {
-			err = fmt.Errorf("exceeded max retries HTTP %s, %s", resp.Status, response)
+		if sequence >= s.MaxRestRetries {
+			err = fmt.Errorf("exceeded max HTTP retries: %s, %s", resp.Status, response)
+			return
 		}
+
+		s.log(LogWarning, "%s Failed (%s), Retrying...", urlStr, resp.Status)
+		response, err = s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, s.Ratelimiter.LockBucketObject(bucket), sequence+1)
 	case http.StatusTooManyRequests: // Rate limiting
 		// Retry sending request if possible
-		if sequence < s.MaxRestRetries {
-			rl := TooManyRequests{}
+		if sequence >= s.MaxRestRetries {
+			err = fmt.Errorf("exceeded max HTTP retries: %s, %s", resp.Status, response)
+			return
+		}
 
-			err = json.Unmarshal(response, &rl)
-			if err != nil {
-				s.log(LogError, "rate limit unmarshal error: %s", err)
+		rl := TooManyRequests{}
+
+		err = json.Unmarshal(response, &rl)
+		if err != nil {
+			s.log(LogError, "rate limit unmarshal error: %s", err)
+			return
+		}
+
+		// If next retry will be after the context deadline, return early.
+		deadline, hasDeadline := ctx.Deadline()
+		if hasDeadline {
+			if rl.RetryAfter.Milliseconds() >= time.Until(deadline).Milliseconds() {
+				err = fmt.Errorf("rate limit next retry after context deadline: %w", context.DeadlineExceeded)
+				s.log(LogError, "rate limit error: %s", err)
 				return
 			}
-
-			s.log(LogWarning, "Rate Limiting %s, retry in %d ms", urlStr, rl.RetryAfter)
-			s.handleEvent(rateLimitEventType, RateLimit{TooManyRequests: &rl, URL: urlStr})
-
-			time.Sleep(rl.RetryAfter * time.Millisecond)
-			// we can make the above smarter
-			// this method can cause longer delays than required
-
-			response, err = s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, s.Ratelimiter.LockBucketObject(bucket), sequence+1)
-		} else {
-			err = fmt.Errorf("exceeded max retries HTTP %s, %s", resp.Status, response)
 		}
+
+		s.log(LogWarning, "Rate Limiting %s, retry in %d ms", urlStr, rl.RetryAfter)
+		s.handleEvent(rateLimitEventType, RateLimit{TooManyRequests: &rl, URL: urlStr})
+
+		time.Sleep(rl.RetryAfter * time.Millisecond)
+		// we can make the above smarter
+		// this method can cause longer delays than required
+
+		response, err = s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, s.Ratelimiter.LockBucketObject(bucket), sequence)
 	case http.StatusUnauthorized:
 		if strings.Index(s.Token, "Bot ") != 0 {
 			s.log(LogError, ErrUnauthorized.Error())
