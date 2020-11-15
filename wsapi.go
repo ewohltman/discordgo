@@ -167,7 +167,7 @@ func (s *Session) Open() error {
 		s.State = state
 	}
 
-	// Now Discord should send us a READY or RESUMED packet.
+	// Now Discord should send us a READY, RESUMED, or PRESENCE_UPDATE packet.
 	mt, m, err = s.wsConn.ReadMessage()
 	if err != nil {
 		return err
@@ -176,7 +176,7 @@ func (s *Session) Open() error {
 	if err != nil {
 		return err
 	}
-	if e.Type != `READY` && e.Type != `RESUMED` {
+	if e.Type != `READY` && e.Type != `RESUMED` && e.Type != `PRESENCE_UPDATE` {
 		// This is not fatal, but it does not follow their API documentation.
 		s.log(LogWarning, "Expected READY/RESUMED, instead got:\n%#v\n", e)
 	}

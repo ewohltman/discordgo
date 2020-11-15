@@ -157,7 +157,7 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 	switch resp.StatusCode {
 	case http.StatusOK, http.StatusCreated, http.StatusNoContent:
 		return
-	case http.StatusBadGateway:
+	case http.StatusInternalServerError, http.StatusBadGateway:
 		// Retry sending request if possible
 		if sequence >= s.MaxRestRetries {
 			err = fmt.Errorf("exceeded max HTTP retries: %s, %s", resp.Status, response)
