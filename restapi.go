@@ -169,7 +169,7 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 			return
 		}
 
-		s.log(LogWarning, "%s Failed (%s), Retrying...", urlStr, resp.Status)
+		s.log(LogDebug, "%s Failed (%s), Retrying...", urlStr, resp.Status)
 
 		err = s.Ratelimiter.LockBucketObject(ctx, bucket)
 		if err != nil {
@@ -188,20 +188,31 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 
 		err = json.Unmarshal(response, &rl)
 		if err != nil {
-			s.log(LogError, "rate limit unmarshal error: %s", err)
+			err = fmt.Errorf("rate limit unmarshal error: %s", err)
+			s.log(LogError, err.Error())
 			return
 		}
 
-		s.log(LogWarning, "Rate Limiting %s, retry in %d ms", urlStr, rl.RetryAfter)
+		var retryAfter time.Duration
+
+		retryAfter, err = time.ParseDuration(fmt.Sprintf("%fs", rl.RetryAfter))
+		if err != nil {
+			err = fmt.Errorf("rate limit parsing error: %s", err)
+			s.log(LogError, err.Error())
+			return
+		}
+
+		s.log(LogWarning, "Rate limiting %s: retry in %f s", urlStr, rl.RetryAfter)
 		s.handleEvent(rateLimitEventType, RateLimit{TooManyRequests: &rl, URL: urlStr})
 
-		retryTime := time.NewTimer(rl.RetryAfter * time.Millisecond)
+		retryTime := time.NewTimer(retryAfter)
 		defer retryTime.Stop()
 
 		select {
 		case <-retryTime.C:
 			err = s.Ratelimiter.LockBucketObject(ctx, bucket)
 			if err != nil {
+				s.log(LogError, err.Error())
 				return
 			}
 
@@ -212,7 +223,7 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 			return
 		}
 	case http.StatusUnauthorized:
-		if strings.Index(s.Token, "Bot ") != 0 {
+		if strings.Index(s.Identify.Token, "Bot ") != 0 {
 			s.log(LogError, ErrUnauthorized.Error())
 			err = ErrUnauthorized
 		}
