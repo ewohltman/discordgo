@@ -1,6 +1,8 @@
 package discordgo
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -86,20 +88,33 @@ func (r *RateLimiter) GetWaitTime(b *Bucket, minRemaining int) time.Duration {
 }
 
 // LockBucket Locks until a request can be made
-func (r *RateLimiter) LockBucket(bucketID string) *Bucket {
-	return r.LockBucketObject(r.GetBucket(bucketID))
+func (r *RateLimiter) LockBucket(ctx context.Context, bucketID string) (*Bucket, error) {
+	bucket := r.GetBucket(bucketID)
+
+	err := r.LockBucketObject(ctx, bucket)
+	if err != nil {
+		return nil, err
+	}
+
+	return bucket, nil
 }
 
 // LockBucketObject Locks an already resolved bucket until a request can be made
-func (r *RateLimiter) LockBucketObject(b *Bucket) *Bucket {
-	b.Lock()
+func (r *RateLimiter) LockBucketObject(ctx context.Context, bucket *Bucket) error {
+	bucket.Lock()
+	defer func() {
+		bucket.Remaining--
+	}()
 
-	if wait := r.GetWaitTime(b, 1); wait > 0 {
-		time.Sleep(wait)
+	waitTime := time.NewTimer(r.GetWaitTime(bucket, 1))
+	defer waitTime.Stop()
+
+	select {
+	case <-waitTime.C:
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("error locking bucket object: %w", ctx.Err())
 	}
-
-	b.Remaining--
-	return b
 }
 
 // Bucket represents a ratelimit bucket, each bucket gets ratelimited individually (-global ratelimits)

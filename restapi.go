@@ -81,7 +81,12 @@ func (s *Session) request(ctx context.Context, method, urlStr, contentType strin
 		bucketID = strings.SplitN(urlStr, "?", 2)[0]
 	}
 
-	return s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, s.Ratelimiter.LockBucket(bucketID), sequence)
+	bucket, err := s.Ratelimiter.LockBucket(ctx, bucketID)
+	if err != nil {
+		return nil, fmt.Errorf("error performing request: %w", err)
+	}
+
+	return s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, bucket, sequence)
 }
 
 // RequestWithLockedBucket makes a request using a bucket that's already been locked
@@ -165,7 +170,13 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 		}
 
 		s.log(LogWarning, "%s Failed (%s), Retrying...", urlStr, resp.Status)
-		response, err = s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, s.Ratelimiter.LockBucketObject(bucket), sequence+1)
+
+		err = s.Ratelimiter.LockBucketObject(ctx, bucket)
+		if err != nil {
+			return
+		}
+
+		response, err = s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, bucket, sequence+1)
 	case http.StatusTooManyRequests: // Rate limiting
 		// Retry sending request if possible
 		if sequence >= s.MaxRestRetries {
@@ -181,24 +192,25 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 			return
 		}
 
-		// If next retry will be after the context deadline, return early.
-		deadline, hasDeadline := ctx.Deadline()
-		if hasDeadline {
-			if rl.RetryAfter.Milliseconds() >= time.Until(deadline).Milliseconds() {
-				err = fmt.Errorf("rate limit next retry after context deadline: %w", context.DeadlineExceeded)
-				s.log(LogError, "rate limit error: %s", err)
-				return
-			}
-		}
-
 		s.log(LogWarning, "Rate Limiting %s, retry in %d ms", urlStr, rl.RetryAfter)
 		s.handleEvent(rateLimitEventType, RateLimit{TooManyRequests: &rl, URL: urlStr})
 
-		time.Sleep(rl.RetryAfter * time.Millisecond)
-		// we can make the above smarter
-		// this method can cause longer delays than required
+		retryTime := time.NewTimer(rl.RetryAfter * time.Millisecond)
+		defer retryTime.Stop()
 
-		response, err = s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, s.Ratelimiter.LockBucketObject(bucket), sequence)
+		select {
+		case <-retryTime.C:
+			err = s.Ratelimiter.LockBucketObject(ctx, bucket)
+			if err != nil {
+				return
+			}
+
+			response, err = s.RequestWithContextLockedBucket(ctx, method, urlStr, contentType, b, bucket, sequence)
+		case <-ctx.Done():
+			err = fmt.Errorf("rate limit error: %w", ctx.Err())
+			s.log(LogError, err.Error())
+			return
+		}
 	case http.StatusUnauthorized:
 		if strings.Index(s.Token, "Bot ") != 0 {
 			s.log(LogError, ErrUnauthorized.Error())

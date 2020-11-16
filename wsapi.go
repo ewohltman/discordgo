@@ -167,7 +167,7 @@ func (s *Session) Open() error {
 		s.State = state
 	}
 
-	// Now Discord should send us a READY, RESUMED, or PRESENCE_UPDATE packet.
+	// Now Discord should send us a READY or RESUMED packet.
 	mt, m, err = s.wsConn.ReadMessage()
 	if err != nil {
 		return err
@@ -176,13 +176,14 @@ func (s *Session) Open() error {
 	if err != nil {
 		return err
 	}
-	if e.Type != `READY` && e.Type != `RESUMED` && e.Type != `PRESENCE_UPDATE` {
+	if e.Type != readyEventType && e.Type != resumedEventType {
 		// This is not fatal, but it does not follow their API documentation.
-		s.log(LogWarning, "Expected READY/RESUMED/PRESENCE_UPDATE, instead got:\n%#v\n", e)
+		s.log(LogDebug, "Expected READY/RESUMED, instead got:\n%#v\n", e)
 	}
-	s.log(LogDebug, "First Packet:\n%#v\n", e)
 
+	s.log(LogDebug, "First Packet:\n%#v\n", e)
 	s.log(LogDebug, "We are now connected to Discord, emitting connect event")
+
 	s.handleEvent(connectEventType, &Connect{})
 
 	// A VoiceConnections map is a hard requirement for Voice.
