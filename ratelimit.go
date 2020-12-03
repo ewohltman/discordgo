@@ -113,6 +113,7 @@ func (r *RateLimiter) LockBucketObject(ctx context.Context, bucket *Bucket) erro
 	case <-waitTime.C:
 		return nil
 	case <-ctx.Done():
+		bucket.Release(nil)
 		return fmt.Errorf("error locking bucket object: %w", ctx.Err())
 	}
 }
