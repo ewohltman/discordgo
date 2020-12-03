@@ -195,52 +195,38 @@ func (s *State) PresenceAdd(guildID string, presence *Presence) error {
 	s.Lock()
 	defer s.Unlock()
 
-	waitGroup := &sync.WaitGroup{}
-	semaphore := make(chan struct{}, 50)
-
 	for index := range guild.Presences {
-		semaphore <- struct{}{}
+		if guild.Presences[index].User.ID != presence.User.ID {
+			continue
+		}
 
-		index := index
+		guild.Presences[index].Game = presence.Game
+		guild.Presences[index].Roles = presence.Roles
 
-		waitGroup.Add(1)
+		if presence.User.Avatar != "" {
+			guild.Presences[index].User.Avatar = presence.User.Avatar
+		}
+		if presence.User.Discriminator != "" {
+			guild.Presences[index].User.Discriminator = presence.User.Discriminator
+		}
+		if presence.User.Email != "" {
+			guild.Presences[index].User.Email = presence.User.Email
+		}
+		if presence.User.Token != "" {
+			guild.Presences[index].User.Token = presence.User.Token
+		}
+		if presence.User.Username != "" {
+			guild.Presences[index].User.Username = presence.User.Username
+		}
+		if presence.Nick != "" {
+			guild.Presences[index].Nick = presence.Nick
+		}
+		if presence.Status != "" {
+			guild.Presences[index].Status = presence.Status
+		}
 
-		go func() {
-			defer waitGroup.Done()
-			defer func() { <-semaphore }()
-
-			if guild.Presences[index].User.ID != presence.User.ID {
-				return
-			}
-
-			guild.Presences[index].Game = presence.Game
-			guild.Presences[index].Roles = presence.Roles
-
-			if presence.User.Avatar != "" {
-				guild.Presences[index].User.Avatar = presence.User.Avatar
-			}
-			if presence.User.Discriminator != "" {
-				guild.Presences[index].User.Discriminator = presence.User.Discriminator
-			}
-			if presence.User.Email != "" {
-				guild.Presences[index].User.Email = presence.User.Email
-			}
-			if presence.User.Token != "" {
-				guild.Presences[index].User.Token = presence.User.Token
-			}
-			if presence.User.Username != "" {
-				guild.Presences[index].User.Username = presence.User.Username
-			}
-			if presence.Nick != "" {
-				guild.Presences[index].Nick = presence.Nick
-			}
-			if presence.Status != "" {
-				guild.Presences[index].Status = presence.Status
-			}
-		}()
+		return nil
 	}
-
-	waitGroup.Wait()
 
 	guild.Presences = append(guild.Presences, presence)
 	return nil
