@@ -195,43 +195,48 @@ func (s *State) PresenceAdd(guildID string, presence *Presence) error {
 	s.Lock()
 	defer s.Unlock()
 
-	for i, p := range guild.Presences {
-		if p.User.ID == presence.User.ID {
-			//guild.Presences[i] = presence
+	waitGroup := &sync.WaitGroup{}
 
-			//Update status
-			guild.Presences[i].Game = presence.Game
-			guild.Presences[i].Roles = presence.Roles
-			if presence.Status != "" {
-				guild.Presences[i].Status = presence.Status
-			}
-			if presence.Nick != "" {
-				guild.Presences[i].Nick = presence.Nick
+	for index := range guild.Presences {
+		index := index
+
+		waitGroup.Add(1)
+
+		go func() {
+			defer waitGroup.Done()
+
+			if guild.Presences[index].User.ID != presence.User.ID {
+				return
 			}
 
-			//Update the optionally sent user information
-			//ID Is a mandatory field so you should not need to check if it is empty
-			guild.Presences[i].User.ID = presence.User.ID
+			guild.Presences[index].Game = presence.Game
+			guild.Presences[index].Roles = presence.Roles
 
 			if presence.User.Avatar != "" {
-				guild.Presences[i].User.Avatar = presence.User.Avatar
+				guild.Presences[index].User.Avatar = presence.User.Avatar
 			}
 			if presence.User.Discriminator != "" {
-				guild.Presences[i].User.Discriminator = presence.User.Discriminator
+				guild.Presences[index].User.Discriminator = presence.User.Discriminator
 			}
 			if presence.User.Email != "" {
-				guild.Presences[i].User.Email = presence.User.Email
+				guild.Presences[index].User.Email = presence.User.Email
 			}
 			if presence.User.Token != "" {
-				guild.Presences[i].User.Token = presence.User.Token
+				guild.Presences[index].User.Token = presence.User.Token
 			}
 			if presence.User.Username != "" {
-				guild.Presences[i].User.Username = presence.User.Username
+				guild.Presences[index].User.Username = presence.User.Username
 			}
-
-			return nil
-		}
+			if presence.Nick != "" {
+				guild.Presences[index].Nick = presence.Nick
+			}
+			if presence.Status != "" {
+				guild.Presences[index].Status = presence.Status
+			}
+		}()
 	}
+
+	waitGroup.Wait()
 
 	guild.Presences = append(guild.Presences, presence)
 	return nil
