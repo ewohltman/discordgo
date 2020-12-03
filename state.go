@@ -196,14 +196,18 @@ func (s *State) PresenceAdd(guildID string, presence *Presence) error {
 	defer s.Unlock()
 
 	waitGroup := &sync.WaitGroup{}
+	semaphore := make(chan struct{}, 50)
 
 	for index := range guild.Presences {
+		semaphore <- struct{}{}
+
 		index := index
 
 		waitGroup.Add(1)
 
 		go func() {
 			defer waitGroup.Done()
+			defer func() { <-semaphore }()
 
 			if guild.Presences[index].User.ID != presence.User.ID {
 				return
