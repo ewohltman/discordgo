@@ -1,8 +1,12 @@
 package discordgo
 
 import (
-	"encoding/json"
+	stdlibJSON "encoding/json"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // This file contains all the possible structs that can be
 // handled by AddHandler/EventHandler.
@@ -26,10 +30,10 @@ type RateLimit struct {
 
 // Event provides a basic initial struct for all websocket events.
 type Event struct {
-	Operation int             `json:"op"`
-	Sequence  int64           `json:"s"`
-	Type      string          `json:"t"`
-	RawData   json.RawMessage `json:"d"`
+	Operation int                   `json:"op"`
+	Sequence  int64                 `json:"s"`
+	Type      string                `json:"t"`
+	RawData   stdlibJSON.RawMessage `json:"d"`
 	// Struct contains one of the other types in this file.
 	Struct interface{} `json:"-"`
 }

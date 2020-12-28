@@ -13,7 +13,6 @@ package discordgo
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"image"

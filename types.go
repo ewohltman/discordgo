@@ -10,7 +10,6 @@
 package discordgo
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 )

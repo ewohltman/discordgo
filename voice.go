@@ -11,7 +11,6 @@ package discordgo
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"net"
 	"strconv"
