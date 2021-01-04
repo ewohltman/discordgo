@@ -1252,6 +1252,7 @@ const (
 	ErrCodeUnknownUser        = 10013
 	ErrCodeUnknownEmoji       = 10014
 	ErrCodeUnknownWebhook     = 10015
+	ErrCodeUnknownBan         = 10026
 
 	ErrCodeBotsCannotUseEndpoint  = 20001
 	ErrCodeOnlyBotsCanUseEndpoint = 20002
