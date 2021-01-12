@@ -202,7 +202,7 @@ func (s *Session) RequestWithContextLockedBucket(ctx context.Context, method, ur
 		}
 
 		s.log(LogWarning, "Rate limiting %s: retry in %f s", urlStr, rl.RetryAfter)
-		s.handleEvent(rateLimitEventType, RateLimit{TooManyRequests: &rl, URL: urlStr})
+		s.handleEvent(rateLimitEventType, &RateLimit{TooManyRequests: &rl, URL: urlStr})
 
 		retryTime := time.NewTimer(retryAfter)
 		defer retryTime.Stop()
