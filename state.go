@@ -195,37 +195,38 @@ func (s *State) PresenceAdd(guildID string, presence *Presence) error {
 	s.Lock()
 	defer s.Unlock()
 
-	for index := range guild.Presences {
-		if guild.Presences[index].User.ID != presence.User.ID {
-			continue
-		}
+	for i, p := range guild.Presences {
+		if p.User.ID == presence.User.ID {
+			//guild.Presences[i] = presence
 
-		guild.Presences[index].Game = presence.Game
-		guild.Presences[index].Roles = presence.Roles
+			//Update status
+			guild.Presences[i].Activities = presence.Activities
+			if presence.Status != "" {
+				guild.Presences[i].Status = presence.Status
+			}
 
-		if presence.User.Avatar != "" {
-			guild.Presences[index].User.Avatar = presence.User.Avatar
-		}
-		if presence.User.Discriminator != "" {
-			guild.Presences[index].User.Discriminator = presence.User.Discriminator
-		}
-		if presence.User.Email != "" {
-			guild.Presences[index].User.Email = presence.User.Email
-		}
-		if presence.User.Token != "" {
-			guild.Presences[index].User.Token = presence.User.Token
-		}
-		if presence.User.Username != "" {
-			guild.Presences[index].User.Username = presence.User.Username
-		}
-		if presence.Nick != "" {
-			guild.Presences[index].Nick = presence.Nick
-		}
-		if presence.Status != "" {
-			guild.Presences[index].Status = presence.Status
-		}
+			//Update the optionally sent user information
+			//ID Is a mandatory field so you should not need to check if it is empty
+			guild.Presences[i].User.ID = presence.User.ID
 
-		return nil
+			if presence.User.Avatar != "" {
+				guild.Presences[i].User.Avatar = presence.User.Avatar
+			}
+			if presence.User.Discriminator != "" {
+				guild.Presences[i].User.Discriminator = presence.User.Discriminator
+			}
+			if presence.User.Email != "" {
+				guild.Presences[i].User.Email = presence.User.Email
+			}
+			if presence.User.Token != "" {
+				guild.Presences[i].User.Token = presence.User.Token
+			}
+			if presence.User.Username != "" {
+				guild.Presences[i].User.Username = presence.User.Username
+			}
+
+			return nil
+		}
 	}
 
 	guild.Presences = append(guild.Presences, presence)
@@ -961,24 +962,12 @@ func (s *State) OnInterface(se *Session, i interface{}) (err error) {
 				// Member not found; this is a user coming online
 				m = &Member{
 					GuildID: t.GuildID,
-					Nick:    t.Nick,
 					User:    t.User,
-					Roles:   t.Roles,
 				}
-
 			} else {
-
-				if t.Nick != "" {
-					m.Nick = t.Nick
-				}
-
 				if t.User.Username != "" {
 					m.User.Username = t.User.Username
 				}
-
-				// PresenceUpdates always contain a list of roles, so there's no need to check for an empty list here
-				m.Roles = t.Roles
-
 			}
 
 			err = s.MemberAdd(m)
@@ -992,7 +981,7 @@ func (s *State) OnInterface(se *Session, i interface{}) (err error) {
 // UserChannelPermissions returns the permission of a user in a channel.
 // userID    : The ID of the user to calculate permissions for.
 // channelID : The ID of the channel to calculate permission for.
-func (s *State) UserChannelPermissions(userID, channelID string) (apermissions int, err error) {
+func (s *State) UserChannelPermissions(userID, channelID string) (apermissions int64, err error) {
 	if s == nil {
 		return 0, ErrNilState
 	}
@@ -1017,7 +1006,7 @@ func (s *State) UserChannelPermissions(userID, channelID string) (apermissions i
 
 // MessagePermissions returns the permissions of the author of the message
 // in the channel in which it was sent.
-func (s *State) MessagePermissions(message *Message) (apermissions int, err error) {
+func (s *State) MessagePermissions(message *Message) (apermissions int64, err error) {
 	if s == nil {
 		return 0, ErrNilState
 	}

@@ -199,7 +199,7 @@ func (s *Session) UserWithContext(ctx context.Context, userID string) (st *User,
 //
 // NOTE: This function is now deprecated and will be removed in the future.
 // Please see the same function inside state.go
-func (s *Session) UserChannelPermissionsWithContext(ctx context.Context, userID, channelID string) (apermissions int, err error) {
+func (s *Session) UserChannelPermissionsWithContext(ctx context.Context, userID, channelID string) (apermissions int64, err error) {
 	// Try to just get permissions from state.
 	apermissions, err = s.State.UserChannelPermissions(userID, channelID)
 	if err == nil {
