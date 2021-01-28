@@ -349,7 +349,7 @@ func (s *Session) UserGuildSettingsEdit(guildID string, settings *UserGuildSetti
 //
 // NOTE: This function is now deprecated and will be removed in the future.
 // Please see the same function inside state.go
-func (s *Session) UserChannelPermissions(userID, channelID string) (apermissions int, err error) {
+func (s *Session) UserChannelPermissions(userID, channelID string) (apermissions int64, err error) {
 	return s.UserChannelPermissionsWithContext(context.TODO(), userID, channelID)
 }
 
@@ -817,7 +817,7 @@ func (s *Session) GuildRoleCreate(guildID string) (st *Role, err error) {
 // The hoist parameter is for whether to display the role's users separately.
 // The perm parameter is the permissions for the role. The mention parameter is
 // for whether this role is mentionable.
-func (s *Session) GuildRoleEdit(guildID, roleID, name string, color int, hoist bool, perm int, mention bool) (st *Role, err error) {
+func (s *Session) GuildRoleEdit(guildID, roleID, name string, color int, hoist bool, perm int64, mention bool) (st *Role, err error) {
 	return s.GuildRoleEditWithContext(context.TODO(), guildID, roleID, name, color, hoist, perm, mention)
 }
 

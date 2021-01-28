@@ -367,7 +367,7 @@ func (s *Session) GuildRoleCreateWithContext(ctx context.Context, guildID string
 // provided as a decimal value, not hex. The hoist parameter is for whether to
 // display the role's users separately. The perm parameter is the permissions
 // for the role. The mention parameter is for whether this role is mentionable.
-func (s *Session) GuildRoleEditWithContext(ctx context.Context, guildID, roleID, name string, color int, hoist bool, perm int, mention bool) (st *Role, err error) {
+func (s *Session) GuildRoleEditWithContext(ctx context.Context, guildID, roleID, name string, color int, hoist bool, perm int64, mention bool) (st *Role, err error) {
 	// Prevent sending a color int that is too big.
 	if color > 0xFFFFFF {
 		err = fmt.Errorf("color value cannot be larger than 0xFFFFFF")
@@ -378,7 +378,7 @@ func (s *Session) GuildRoleEditWithContext(ctx context.Context, guildID, roleID,
 		Name        string `json:"name"`        // The role's name (overwrites existing)
 		Color       int    `json:"color"`       // The color the role should have (as a decimal, not hex)
 		Hoist       bool   `json:"hoist"`       // Whether to display the role's users separately
-		Permissions int    `json:"permissions"` // The overall permissions number of the role (overwrites existing)
+		Permissions int64  `json:"permissions"` // The overall permissions number of the role (overwrites existing)
 		Mentionable bool   `json:"mentionable"` // Whether this role is mentionable
 	}{name, color, hoist, perm, mention}
 
