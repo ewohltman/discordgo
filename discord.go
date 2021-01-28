@@ -19,10 +19,14 @@ import (
 	"net/http"
 	"runtime"
 	"time"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 // VERSION of DiscordGo, follows Semantic Versioning. (http://semver.org/)
 const VERSION = "0.23.0"
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // ErrMFA will be risen by New when the user has 2FA.
 var ErrMFA = errors.New("account has 2FA enabled")

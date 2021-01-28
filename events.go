@@ -2,11 +2,7 @@ package discordgo
 
 import (
 	stdlibJSON "encoding/json"
-
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // This file contains all the possible structs that can be
 // handled by AddHandler/EventHandler.

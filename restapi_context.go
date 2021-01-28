@@ -375,11 +375,11 @@ func (s *Session) GuildRoleEditWithContext(ctx context.Context, guildID, roleID,
 	}
 
 	data := struct {
-		Name        string `json:"name"`        // The role's name (overwrites existing)
-		Color       int    `json:"color"`       // The color the role should have (as a decimal, not hex)
-		Hoist       bool   `json:"hoist"`       // Whether to display the role's users separately
-		Permissions int64  `json:"permissions"` // The overall permissions number of the role (overwrites existing)
-		Mentionable bool   `json:"mentionable"` // Whether this role is mentionable
+		Name        string `json:"name"`               // The role's name (overwrites existing)
+		Color       int    `json:"color"`              // The color the role should have (as a decimal, not hex)
+		Hoist       bool   `json:"hoist"`              // Whether to display the role's users separately
+		Permissions int64  `json:"permissions,string"` // The overall permissions number of the role (overwrites existing)
+		Mentionable bool   `json:"mentionable"`        // Whether this role is mentionable
 	}{name, color, hoist, perm, mention}
 
 	body, err := s.RequestWithContextBucketID(ctx, "PATCH", EndpointGuildRole(guildID, roleID), data, EndpointGuildRole(guildID, ""))
