@@ -1,7 +1,7 @@
 package discordgo
 
 import (
-	stdlibJSON "encoding/json"
+	stdJSON "encoding/json"
 )
 
 // This file contains all the possible structs that can be
@@ -26,10 +26,10 @@ type RateLimit struct {
 
 // Event provides a basic initial struct for all websocket events.
 type Event struct {
-	Operation int                   `json:"op"`
-	Sequence  int64                 `json:"s"`
-	Type      string                `json:"t"`
-	RawData   stdlibJSON.RawMessage `json:"d"`
+	Operation int                `json:"op"`
+	Sequence  int64              `json:"s"`
+	Type      string             `json:"t"`
+	RawData   stdJSON.RawMessage `json:"d"`
 	// Struct contains one of the other types in this file.
 	Struct interface{} `json:"-"`
 }
